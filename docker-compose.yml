@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # MySQL数据库服务
+  mysql:
+    image: mysql:8.0
+    container_name: cloud-manager-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: cloud_manager
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./backend/src/main/resources/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: always
+    networks:
+      - cloud-manager-network
+
+  # Spring Boot后端服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cloud-manager-backend
+    depends_on:
+      - mysql
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/cloud_manager?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 123456
+    ports:
+      - "8080:8080"
+    restart: always
+    networks:
+      - cloud-manager-network
+
+  # Vue前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cloud-manager-frontend
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    restart: always
+    networks:
+      - cloud-manager-network
+
+# 网络配置
+networks:
+  cloud-manager-network:
+    driver: bridge
+
+# 数据卷配置
+volumes:
+  mysql-data:
+    driver: local
